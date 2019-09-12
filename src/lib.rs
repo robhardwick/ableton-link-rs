@@ -15,7 +15,6 @@ mod sys {
 }
 
 use sys::*;
-use std::os::raw::c_void;
 
 /// # Represents a participant in a Link session.
 /// 
@@ -166,38 +165,9 @@ impl Link {
     // should be captured and used in a local scope. Storing the
     // Session State for later use in a different context is not advised
     // because it will provide an outdated view.
-    // fn capture_audio_session_state(&self) -> SessionState {
-    //     unimplemented!()
-    // }
-
-    /// Capture the current Link Session State from the audio thread.
-    /// * Thread-safe: no
-    /// * Realtime-safe: yes
-    /// 
-    /// This method should ONLY be called in the audio thread
-    /// and must not be accessed from any other threads. The closure
-    /// passes a snapshot of the current Link Session State, it
-    /// should only be used in the local scope. Storing the
-    /// Session State for later use in a different context is not advised
-    /// because it will provide an outdated view.
-    pub fn with_audio_session_state<F>(&self, f: F)
-        where F: FnMut(SessionState)
-    {
-        let user_data = &f as *const _ as *mut c_void;
-        unsafe {
-            Link_withAudioSessionState(self.wlink, Some(closure_wrapper::<F>), user_data);
-        }
-
-        extern fn closure_wrapper<F>(closure: *mut c_void, wss: *mut WSessionState)
-            where F: FnMut(SessionState)
-        {
-            let opt_closure = closure as *mut Option<F>;
-            unsafe {
-                let mut fnx = (*opt_closure).take().unwrap();
-                let ss = SessionState { wss };
-                fnx(ss);
-            }
-        }
+    pub fn capture_audio_session_state(&self) -> SessionState {
+        let wss = unsafe { Link_captureAudioSessionState(self.wlink) };
+        SessionState { wss }
     }
 
     /// Commit the given Session State to the Link session from the audio thread.
@@ -222,39 +192,9 @@ impl Link {
     // state, so it should be captured and used in a local scope.
     // Storing the it for later use in a different context is not
     // advised because it will provide an outdated view.
-    // pub fn capture_app_session_state(&self) -> SessionState {
-    //     let wss = unsafe { Link_captureAppSessionState(self.wlink) };
-    //     SessionState { wss }
-    // }
-
-    /// Capture the current Link Session State from an application thread.
-    /// * Thread-safe: yes
-    /// * Realtime-safe: no
-    /// 
-    /// Provides a mechanism for capturing the Link Session
-    /// State from an application thread (other than the audio thread).
-    /// The closure passes a Session State that stores a snapshot of the current Link
-    /// state, it should only be used in the local scope.
-    /// Storing it for later use in a different context is not
-    /// advised because it will provide an outdated view.
-    pub fn with_app_session_state<F>(&self, f: F)
-        where F: FnMut(SessionState)
-    {
-        let user_data = &f as *const _ as *mut c_void;
-        unsafe {
-            Link_withAppSessionState(self.wlink, Some(closure_wrapper::<F>), user_data);
-        }
-
-        extern fn closure_wrapper<F>(closure: *mut c_void, wss: *mut WSessionState)
-            where F: FnMut(SessionState)
-        {
-            let opt_closure = closure as *mut Option<F>;
-            unsafe {
-                let mut fnx = (*opt_closure).take().unwrap();
-                let ss = SessionState { wss };
-                fnx(ss);
-            }
-        }
+    pub fn capture_app_session_state(&self) -> SessionState {
+        let wss = unsafe { Link_captureAppSessionState(self.wlink) };
+        SessionState { wss }
     }
 
     /// Commit the given Session State to the Link session from an
@@ -294,11 +234,11 @@ pub struct SessionState {
     wss: *mut WSessionState,
 }
 
-// impl Drop for SessionState {
-//     fn drop(&mut self) {
-//         unsafe { SessionState_destroy(self.wss) }
-//     }
-// }
+impl Drop for SessionState {
+    fn drop(&mut self) {
+        unsafe { SessionState_destroy(self.wss) }
+    }
+}
 
 impl SessionState {
     /// The tempo of the timeline, in bpm.

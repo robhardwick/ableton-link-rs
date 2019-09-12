@@ -9,7 +9,6 @@ extern "C" {
 typedef struct WLink WLink;
 typedef struct WSessionState WSessionState;
 typedef struct WClock WClock;
-typedef void (*RustClosurePtr)(void*, WSessionState*);
 
 // Link
 
@@ -30,17 +29,15 @@ void Link_setStartStopCallback(WLink* lp, void (*callback)(bool));
 
 WClock* Link_clock(WLink* lp);
 
-void Link_withAudioSessionState(WLink* lp, RustClosurePtr cp, void* closure_data);
+WSessionState* Link_captureAudioSessionState(WLink* lp);
 void Link_commitAudioSessionState(WLink* lp, WSessionState* ssp);
 
-// WSessionState* Link_captureAppSessionState(WLink* lp);
-
-void Link_withAppSessionState(WLink* lp, RustClosurePtr cp, void* closure_data);
+WSessionState* Link_captureAppSessionState(WLink* lp);
 void Link_commitAppSessionState(WLink* lp, WSessionState* ssp);
 
 // SessionState
 
-// void SessionState_destroy(WSessionState* ssp);
+void SessionState_destroy(WSessionState* ssp);
 
 double SessionState_tempo(WSessionState* sp);
 void SessionState_setTempo(WSessionState* ssp, double bpm, int64_t atTime);
